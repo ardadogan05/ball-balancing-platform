@@ -1,11 +1,14 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <Adafruit_PWMServoDriver.h>
+#include "imu.h"
 
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 const uint8_t WHO_AM_I_REGISTER = 0x75;
-const uint8_t MPU_ADDR = 0x68;
-const uint8_t ACCEL_XOUT_H = 0x3B;
+
+unsigned long previous_time;
+float gyro_angle_x = 0;
+float gyro_angle_y = 0;
 
 void scanI2C(){
     Wire.begin(21,22);
@@ -26,15 +29,13 @@ void scanI2C(){
  void setup()
 {
     Serial.begin(115200);
-    delay(1000);
-    Serial.println("ESP32 started successfully");
-
+    initIMU();
     scanI2C();
-
     pwm.begin();
     pwm.setPWMFreq(50);
     delay(1000);
-    
+    previous_time = micros();
+
 //Test MPU
     /* Wire.beginTransmission(0x68);
     Wire.write(WHO_AM_I_REGISTER);
@@ -52,55 +53,23 @@ void scanI2C(){
 }
 void loop()
 {
-    //Read MPU: 
     delay(400); //for readability
-    Wire.beginTransmission(MPU_ADDR);
-    Wire.write(ACCEL_XOUT_H);
-    Wire.endTransmission(false);
-    Wire.requestFrom(MPU_ADDR, 14);
+   //Read IMU
+   IMUData imu = readIMU();
 
-    uint8_t ax_high = Wire.read();
-    uint8_t ax_low  = Wire.read();
+    
+    //calculate dt for integration:
+    unsigned long current_time = micros();
+    float dt = (current_time - previous_time) / 1000000.0f; //micro s to s 
+    previous_time = current_time;
 
-    uint8_t ay_high = Wire.read();
-    uint8_t ay_low  = Wire.read();
+    //integrate gyro to get angle from angular velocity
 
-    uint8_t az_high = Wire.read();
-    uint8_t az_low  = Wire.read();
+    gyro_angle_x += imu.gx_dps * dt;
+    gyro_angle_y += imu.gy_dps * dt; 
 
-    Wire.read(); //just reading and ignoring temp values
-    Wire.read();
 
-    uint8_t gx_high = Wire.read();
-    uint8_t gx_low  = Wire.read();
-
-    uint8_t gy_high = Wire.read();
-    uint8_t gy_low  = Wire.read();
-
-    uint8_t gz_high = Wire.read();
-    uint8_t gz_low  = Wire.read();
-
-    //raw accelerometer values:
-    int16_t ax = (ax_high << 8) | ax_low;
-    int16_t ay = (ay_high << 8) | ay_low;
-    int16_t az = (az_high << 8) | az_low;
-
-    //converting to units of g 
-    float ax_g = ax / 16384.0f;
-    float ay_g = ay / 16384.0f;
-    float az_g = az / 16384.0f;
-
-    //raw gyro values
-    int16_t gx = (gx_high << 8) | gx_low;
-    int16_t gy = (gy_high << 8) | gy_low;
-    int16_t gz = (gz_high << 8) | gz_low;
-
-    //converted into dps, adjusted for bias from 233 values
-    float gx_dps = (gx - 424) / 131.0f;
-    float gy_dps = (gy - 134) / 131.0f;
-    float gz_dps = (gz - 187) / 131.0f;
-
-    Serial.print("AX: ");
+    /* Serial.print("AX: ");
     Serial.print(ax_g);
     Serial.print(" g  ");
 
@@ -122,5 +91,21 @@ void loop()
 
     Serial.print(" GZ: ");
     Serial.print(gz_dps);
-    Serial.println(" °/s  ");
+    Serial.println(" °/s  "); */
+
+    Serial.print("Angle X: ");
+    Serial.print(imu.angle_x);
+    Serial.print(" deg   ");
+
+    Serial.print("Angle Y: ");
+    Serial.print(imu.angle_y);
+    Serial.println(" deg");
+
+    Serial.print("Gyro x: ");
+    Serial.print(gyro_angle_x);
+    Serial.print(" deg   ");
+
+    Serial.print("Gyro Y: ");
+    Serial.print(gyro_angle_y);
+    Serial.println(" deg");
 }
