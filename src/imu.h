@@ -12,7 +12,10 @@ struct IMUData {
 
     float angle_x;
     float angle_y;
+
+    float theta_x;
+    float theta_y;
 };
 
-void initIMU();
 IMUData readIMU();
+void updateComplementaryFilter(IMUData& data, float dt);
