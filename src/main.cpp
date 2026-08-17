@@ -7,8 +7,6 @@ Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
 const uint8_t WHO_AM_I_REGISTER = 0x75;
 
 unsigned long previous_time;
-float gyro_angle_x = 0;
-float gyro_angle_y = 0;
 
 void scanI2C(){
     Wire.begin(21,22);
@@ -29,7 +27,6 @@ void scanI2C(){
  void setup()
 {
     Serial.begin(115200);
-    initIMU();
     scanI2C();
     pwm.begin();
     pwm.setPWMFreq(50);
@@ -53,7 +50,7 @@ void scanI2C(){
 }
 void loop()
 {
-    delay(400); //for readability
+
    //Read IMU
    IMUData imu = readIMU();
 
@@ -63,49 +60,18 @@ void loop()
     float dt = (current_time - previous_time) / 1000000.0f; //micro s to s 
     previous_time = current_time;
 
-    //integrate gyro to get angle from angular velocity
+    updateComplementaryFilter(imu, dt);
+    
+   static unsigned long last_print = 0;
 
-    gyro_angle_x += imu.gx_dps * dt;
-    gyro_angle_y += imu.gy_dps * dt; 
+    // to slow down print
+    if (millis() - last_print >= 100) {
+        Serial.print("Angle X: ");
+        Serial.print(imu.theta_x);
 
+        Serial.print(" Angle Y: ");
+        Serial.println(imu.theta_y);
 
-    /* Serial.print("AX: ");
-    Serial.print(ax_g);
-    Serial.print(" g  ");
-
-    Serial.print(" AY: ");
-    Serial.print(ay_g);
-    Serial.print(" g  ");
-
-    Serial.print(" AZ: ");
-    Serial.print(az_g);
-    Serial.println(" g  ");
-
-    Serial.print("GX: ");
-    Serial.print(gx_dps);
-    Serial.print(" °/s  ");
-
-    Serial.print(" GY: ");
-    Serial.print(gy_dps);
-    Serial.print(" °/s  ");
-
-    Serial.print(" GZ: ");
-    Serial.print(gz_dps);
-    Serial.println(" °/s  "); */
-
-    Serial.print("Angle X: ");
-    Serial.print(imu.angle_x);
-    Serial.print(" deg   ");
-
-    Serial.print("Angle Y: ");
-    Serial.print(imu.angle_y);
-    Serial.println(" deg");
-
-    Serial.print("Gyro x: ");
-    Serial.print(gyro_angle_x);
-    Serial.print(" deg   ");
-
-    Serial.print("Gyro Y: ");
-    Serial.print(gyro_angle_y);
-    Serial.println(" deg");
+        last_print = millis();
+    }
 }

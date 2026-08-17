@@ -4,6 +4,11 @@
 const uint8_t MPU_ADDR = 0x68;
 const uint8_t ACCEL_XOUT_H = 0x3B;
 
+
+static bool filter_initialized = false;
+static float theta_x = 0.0;
+static float theta_y = 0.0;
+
 IMUData readIMU(){
     IMUData data; 
 
@@ -55,5 +60,27 @@ IMUData readIMU(){
     //converted into dps, adjusted for bias from 233 values
     data.gx_dps = (gx - 424) / 131.0f;
     data.gy_dps = (gy - 134) / 131.0f;
-    data.gz_dps = (gz - 187) / 131.0f;
+    data.gz_dps = (gz - 187) / 131.0f;  
+
+    return data;
+}
+
+void updateComplementaryFilter(IMUData& data, float dt){
+    //for weighted average
+    const float tau = 0.5f;
+    float alpha = tau / (tau + dt);
+
+    if (!filter_initialized) {
+        theta_x = data.angle_x;
+        theta_y = data.angle_y;
+        filter_initialized = true;
+    }
+    //integrate gyro to get angle from angular velocity
+
+    theta_x = alpha*(theta_x + data.gx_dps * dt) + (1-alpha) * data.angle_x;
+    theta_y = alpha*(theta_y + data.gy_dps * dt) + (1-alpha) * data.angle_y;
+
+    data.theta_x = theta_x;
+    data.theta_y = theta_y;
+
 }
