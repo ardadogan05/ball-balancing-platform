@@ -4,12 +4,11 @@
 #include "imu.h"
 
 Adafruit_PWMServoDriver pwm = Adafruit_PWMServoDriver();
-const uint8_t WHO_AM_I_REGISTER = 0x75;
+
 
 unsigned long previous_time;
 
 void scanI2C(){
-    Wire.begin(21,22);
     for (int address = 1; address < 127; address++){
         Wire.beginTransmission(address);
         int status = Wire.endTransmission();
@@ -27,24 +26,12 @@ void scanI2C(){
  void setup()
 {
     Serial.begin(115200);
+    Wire.begin(21,22);
     scanI2C();
     pwm.begin();
     pwm.setPWMFreq(50);
     delay(1000);
     previous_time = micros();
-
-//Test MPU
-    /* Wire.beginTransmission(0x68);
-    Wire.write(WHO_AM_I_REGISTER);
-    Wire.endTransmission(false);
-
-    Wire.requestFrom(0x68, 1);
-
-    if (Wire.available()) {
-        int whoami = Wire.read();
-        Serial.print("WHO_AM_I = 0x");
-        Serial.println(whoami, HEX);
-    } */
 
 
 }

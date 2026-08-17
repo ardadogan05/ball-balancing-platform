@@ -10,7 +10,7 @@ static float theta_x = 0.0;
 static float theta_y = 0.0;
 
 IMUData readIMU(){
-    IMUData data; 
+    IMUData data{}; 
 
     Wire.beginTransmission(MPU_ADDR);
     Wire.write(ACCEL_XOUT_H);
